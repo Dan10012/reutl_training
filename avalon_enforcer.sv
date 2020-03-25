@@ -31,9 +31,6 @@ endpackage
 module avalon_enforced
 
 #(
-	parameter int DATA_WIDTH = 8
-)
-(
 	input logic 			clk,
 	input logic 			rst,
 
@@ -48,7 +45,7 @@ import avalon_enforced_pack::*;
 
 avalon_enforced_sm_t 		current_state;
 
-always_ff @(posedge clk or negedge rst) begin
+always_comb begin
 	if(~rst) begin
 		current_state <= WAIT_FOR_MESSAGE;
 	end else begin
