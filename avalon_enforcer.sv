@@ -28,6 +28,21 @@ package avalon_enforced_pack;
 endpackage
 
 
+interface avalon_st_if #(parameter DATA_WIDTH_IN_BYTES = 16);
+	logic 	[(DATA_WIDTH_IN_BYTES*$bits(byte)) - 1 : 0] data;
+	logic 												valid;
+	logic 												rdy;
+	logic 												sop;
+	logic 												eop;
+	logic 	[log2up_func(DATA_WIDTH_IN_BYTES) - 1 : 0] 	empty;
+
+	modport slave 	(input data, input valid, output rdy, input sop, input eop, input empty);
+
+	modport master 	(output data, output valid, input rdy, output sop, output eop, output empty);
+
+endinterface
+
+
 module avalon_enforced
 
 #(
