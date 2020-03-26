@@ -1,20 +1,21 @@
 //////////////////////////////////////////////////////////////////
 ///
-/// Project Name: 	unknown_project
+/// Project Name: 	avalon enforced
 ///
 /// File Name: 		unknown_module_tb.sv
 ///
 //////////////////////////////////////////////////////////////////
 ///
-/// Author: 		Yael Karisi
+/// Author: 		Reut Lev
 ///
-/// Date Created: 	19.3.2020
+/// Date Created: 	26.3.2020
 ///
 /// Company: 		----
 ///
 //////////////////////////////////////////////////////////////////
 ///
-/// Description: 	?????
+/// Description: 	Gets untrusted message, check if its valid protocol, 
+///                 change message accordingly   
 ///
 //////////////////////////////////////////////////////////////////
 
@@ -31,8 +32,9 @@ module avalon_enforced_tb();
 	logic missing_sop_error;
 	logic double_sop_error;
 	
-	avalon_enforced #(
-
+	avalon_enforced 
+	#()
+	avalon_enforced_inst(
 		.clk(clk),
 		.rst(rst),
 
@@ -41,14 +43,15 @@ module avalon_enforced_tb();
 
 		.missing_sop_error(missing_sop_error),
 		.double_sop_error(double_sop_error)
-	) avalon_enforced_inst();
+	);
 
 	always #5 clk = ~clk;
 
 	initial begin 
+      	$dumpfile("dump.vcd");
+      	$dumpvars(2);
 		clk 				= 1'b0;
 		rst 				= 1'b0;
-		start 				= 1'b0;
 
 		// untrusted_msg.CLEAR_MASTER();
 		untrusted_msg.data 	    = '0;
@@ -58,7 +61,7 @@ module avalon_enforced_tb();
 		untrusted_msg.empty 	= 0;
 
 		// enforced_msg.CLEAR_SLAVE();
-		untrusted_msg.rdy 	    = 1'b1;
+		untrusted_msg.ready 	    = 1'b1;
 
 
 		#50;
