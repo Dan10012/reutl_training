@@ -37,116 +37,75 @@ import avalon_enforced_pack::*;
 
 avalon_enforced_sm_t 		current_state;
 
-always_comb begin
+always_ff @(posedge clk or negedge rst) begin : proc_
 	if(~rst) begin
 		current_state <= WAIT_FOR_MESSAGE;
 	end else begin
 		case (current_state)
 			WAIT_FOR_MESSAGE: begin
 				if (untrusted_msg.valid & untrusted_msg.sop & ~untrusted_msg.eop) begin
-					// valid protocol - start getting a message 
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  untrusted_msg.valid;
-		            enforced_msg.sop    <=  untrusted_msg.sop;
-		            enforced_msg.eop    <=  untrusted_msg.eop;
-		            enforced_msg.data   <=  untrusted_msg.data;
-		            enforced_msg.empty  <=  untrusted_msg.empty;
-		            current_state <= RECIEVE_MASSAGE;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
-
-				end else if (~untrusted_msg.valid) begin
-					// raise indication!! invalid input (valid before sop) - reset all outputs to 0
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  1'b0;
-		            enforced_msg.sop    <=  1'b0;
-		            enforced_msg.eop    <=  1'b0;
-		            enforced_msg.data   <=  1'b0;
-		            enforced_msg.empty  <=  0;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
-
-				end else if (untrusted_msg.valid & ~untrusted_msg.sop) begin 
-					// valid information before sop - raise missing_sop_error
-		            enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  1'b0;
-		            enforced_msg.sop    <=  1'b0;
-		            enforced_msg.eop    <=  1'b0;
-		            enforced_msg.data   <=  1'b0;
-		            enforced_msg.empty  <=  0;
-
-		            missing_sop_error   <=  1'b1;
-		            double_sop_error    <=  1'b0;
-
-				end else if (untrusted_msg.valid & untrusted_msg.sop & untrusted_msg.eop) begin 
-					// short message (sop and eop raised together)
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  untrusted_msg.valid;
-		            enforced_msg.sop    <=  untrusted_msg.sop;
-		            enforced_msg.eop    <=  untrusted_msg.eop;
-		            enforced_msg.data   <=  untrusted_msg.data;
-		            enforced_msg.empty  <=  untrusted_msg.empty;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
+					current_state <= RECIEVE_MASSAGE;
 				end
 			end
 
 			RECIEVE_MASSAGE: begin
 				if (untrusted_msg.valid & ~untrusted_msg.sop & untrusted_msg.eop) begin
-					// valid protocol - finished recieving the message 
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  untrusted_msg.valid;
-		            enforced_msg.sop    <=  untrusted_msg.sop;
-		            enforced_msg.eop    <=  untrusted_msg.eop;
-		            enforced_msg.data   <=  untrusted_msg.data;
-		            enforced_msg.empty  <=  untrusted_msg.empty;
-		            current_state <= WAIT_FOR_MESSAGE;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
-
-				end else if (untrusted_msg.valid & untrusted_msg.sop) begin
-					// raise indication!! invalid inputs (sop befoer eop) - reset all outputs as 0
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  1'b0;
-		            enforced_msg.sop    <=  1'b0;
-		            enforced_msg.eop    <=  1'b0;
-		            enforced_msg.data   <=  1'b0;
-		            enforced_msg.empty  <=  0;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b1;
-
-				end else if (untrusted_msg.valid & ~untrusted_msg.eop & untrusted_msg.empty != 0) begin
-					// got empty without eop, irrelevant - reset empty to 0 
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  untrusted_msg.valid;
-		            enforced_msg.sop    <=  untrusted_msg.sop;
-		            enforced_msg.eop    <=  untrusted_msg.eop;
-		            enforced_msg.data   <=  untrusted_msg.data;
-		            enforced_msg.empty  <=  0;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
-
-				end else if (~untrusted_msg.valid) begin
-					// invalid inputs - reset all outputs as 0
-					enforced_msg.ready  <=  untrusted_msg.ready;
-		            enforced_msg.valid  <=  1'b0;
-		            enforced_msg.sop    <=  1'b0;
-		            enforced_msg.eop    <=  1'b0;
-		            enforced_msg.data   <=  1'b0;
-		            enforced_msg.empty  <=  0;
-
-		            missing_sop_error   <=  1'b0;
-		            double_sop_error    <=  1'b0;
-				end	
+					current_state <= WAIT_FOR_MESSAGE;
+				end
 			end
-		endcase
+		endcase // current_state
 	end
 end
+
+always_comb begin
+	case (current_state)
+		WAIT_FOR_MESSAGE: begin
+          	double_sop_error   =  1'b0;          	
+			if (untrusted_msg.valid & untrusted_msg.sop) begin
+				// valid protocol - start getting a message 
+	            enforced_msg.valid  =  untrusted_msg.valid;
+	            enforced_msg.sop    =  untrusted_msg.sop;
+	            enforced_msg.eop    =  untrusted_msg.eop;
+              	
+              	missing_sop_error   =  1'b0;      	
+
+			end else begin
+	            enforced_msg.valid  =  1'b0;
+	            enforced_msg.sop    =  1'b0;
+	            enforced_msg.eop    =  1'b0;
+
+                // raise indication!! invalid input (valid before sop)
+                missing_sop_error   =  untrusted_msg.valid & ~untrusted_msg.sop;
+              
+			end 
+		end
+
+		RECIEVE_MASSAGE: begin
+          	missing_sop_error   =  1'b0;
+			if (untrusted_msg.valid & ~untrusted_msg.sop) begin
+				// valid protocol - finished recieving the message 
+	            enforced_msg.valid  =  untrusted_msg.valid;
+	            enforced_msg.sop    =  untrusted_msg.sop;
+	            enforced_msg.eop    =  untrusted_msg.eop;
+
+              	double_sop_error   =  1'b0;
+
+			end else begin
+	            enforced_msg.valid  =  1'b0;
+	            enforced_msg.sop    =  1'b0;
+	            enforced_msg.eop    =  1'b0;
+
+                // raise indication!! invalid inputs (sop befoer eop)
+                double_sop_error    =  untrusted_msg.valid & untrusted_msg.sop;
+              
+        	end
+		end
+	endcase
+
+end
+  
+assign enforced_msg.empty = enforced_msg.eop ? untrusted_msg.empty : 0;
+assign enforced_msg.data = enforced_msg.valid ? untrusted_msg.data : 0;
+assign enforced_msg.ready =  untrusted_msg.ready;
 
 endmodule
