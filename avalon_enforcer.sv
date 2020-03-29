@@ -41,9 +41,10 @@ always_ff @(posedge clk or negedge rst) begin : proc_
 	if(~rst) begin
 		current_state <= WAIT_FOR_MESSAGE;
 	end else begin
+      if (untrusted_msg.ready) begin
 		case (current_state)
 			WAIT_FOR_MESSAGE: begin
-				if (untrusted_msg.valid & untrusted_msg.sop & ~untrusted_msg.eop) begin
+              if (untrusted_msg.valid & untrusted_msg.sop & ~untrusted_msg.eop) begin
 					current_state <= RECIEVE_MASSAGE;
 				end
 			end
@@ -54,6 +55,7 @@ always_ff @(posedge clk or negedge rst) begin : proc_
 				end
 			end
 		endcase // current_state
+      end
 	end
 end
 
@@ -75,7 +77,7 @@ always_comb begin
 	            enforced_msg.eop    =  1'b0;
 
                 // raise indication!! invalid input (valid before sop)
-                missing_sop_error   =  untrusted_msg.valid & ~untrusted_msg.sop;
+                missing_sop_error   =  untrusted_msg.valid & ~untrusted_msg.sop & ;
               
 			end 
 		end
