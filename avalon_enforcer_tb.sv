@@ -21,7 +21,7 @@
 
 module avalon_enforced_tb();
 
-	localparam int DATA_WIDTH_IN_BYTES = 16;
+	localparam int DATA_WIDTH_IN_BYTES = 8;
 
 	logic clk;
 	logic rst;
@@ -46,6 +46,8 @@ module avalon_enforced_tb();
 	);
 
 	always #5 clk = ~clk;
+  	always #5 untrusted_msg.valid = ~untrusted_msg.valid;
+      
 
 	initial begin 
       	$dumpfile("dump.vcd");
@@ -61,27 +63,39 @@ module avalon_enforced_tb();
 		untrusted_msg.empty 	= 0;
 
 		// enforced_msg.CLEAR_SLAVE();
-		untrusted_msg.ready 	    = 1'b1;
+		untrusted_msg.ready 	= 1'b0;
 
 
-		#50;
-		rst 				= 1'b1;
+		#10;
+		rst 				    = 1'b1;
 
 		@(posedge clk);
-		untrusted_msg.valid     = 1'b1;
+      	#0
+		//untrusted_msg.valid     = 1'b1;
 		untrusted_msg.data 		= {DATA_WIDTH_IN_BYTES{8'd34}};
 		untrusted_msg.sop 		= 1'b1;
-		//@(posedge clk);
-		//@(posedge clk);
+      	untrusted_msg.ready 	= 1'b0;
+		@(posedge clk);
+    	#0
+      	untrusted_msg.sop 		= 1'b0;
+     	untrusted_msg.ready 	= 1'b0;
+		@(posedge clk);
+      	#0
+     	untrusted_msg.ready 	= 1'b0;
 		//untrusted_msg.sop       = 1'b0;
 		@(posedge clk);
+      	#0
+      	untrusted_msg.sop 		= 1'b0;
+      	untrusted_msg.ready 	= 1'b0;
+		//@(posedge clk);
+      	@(posedge clk);
+      	#0
+		untrusted_msg.eop       = 1'b1;
+      	untrusted_msg.ready 	= 1'b0;
 		@(posedge clk);
-		untrusted_msg.eop       = 1'b0;
-		@(posedge clk);
-
+		#0
 		//untrusted_msg.CLEAR_MASTER();
 		untrusted_msg.data 	    = '0;
-		untrusted_msg.valid 	= 1'b0;
 		untrusted_msg.sop 	    = 1'b0;
 		untrusted_msg.eop 	    = 1'b0;
 		untrusted_msg.empty 	= 0;
