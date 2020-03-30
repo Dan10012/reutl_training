@@ -23,34 +23,52 @@ module avalon_enforced
 
 #()
 (
-	input logic 			clk,
-	input logic 			rst,
+	input logic             clk,
+	input logic             rst,
 
-	avalon_st_if.slave 		untrusted_msg,
-	avalon_st_if.master 	enforced_msg,
+	avalon_st_if.slave      untrusted_msg,
+	avalon_st_if.master     enforced_msg,
 
-	output logic 			missing_sop_error,
-	output logic 			double_sop_error,
+	// Indication - got valid out of message
+	output logic            missing_sop_error,
+	// Indication - start new message before ending the last one
+	output logic            double_sop_error,
 );
 
-import avalon_enforced_pack::*;
+//////////////////////////////////////////
+//// Typedefs ////////////////////////////
+//////////////////////////////////////////
+
+typedef enum logic {
+	WAIT_FOR_MESSAGE,
+	RECIEVE_MASSAGE
+} avalon_enforced_sm_t;
+
+//////////////////////////////////////////
+//// Declarations ////////////////////////
+//////////////////////////////////////////
 
 avalon_enforced_sm_t 		current_state;
 
-always_ff @(posedge clk or negedge rst) begin : proc_
+//////////////////////////////////////////
+//// Logic ///////////////////////////////
+//////////////////////////////////////////
+
+always_ff @(posedge clk or negedge rst) begin : proc_enforcer_sm
 	if(~rst) begin
 		current_state <= WAIT_FOR_MESSAGE;
 	end else begin
-      if (untrusted_msg.ready) begin
 		case (current_state)
 			WAIT_FOR_MESSAGE: begin
-              if (untrusted_msg.valid & untrusted_msg.sop & ~untrusted_msg.eop) begin
+				// wait for sop - the module didn't get a message to sent yet 
+             	if (untrusted_msg.valid & untrusted_msg.sop & ~untrusted_msg.eop & untrusted_msg.ready) begin
 					current_state <= RECIEVE_MASSAGE;
 				end
 			end
 
 			RECIEVE_MASSAGE: begin
-				if (untrusted_msg.valid & ~untrusted_msg.sop & untrusted_msg.eop) begin
+				// wait for eop - sending message in progress
+				if (untrusted_msg.valid & ~untrusted_msg.sop & untrusted_msg.eop & untrusted_msg.ready) begin
 					current_state <= WAIT_FOR_MESSAGE;
 				end
 			end
@@ -59,7 +77,7 @@ always_ff @(posedge clk or negedge rst) begin : proc_
 	end
 end
 
-always_comb begin
+always_comb begin : proc_enforced_message_out
 	case (current_state)
 		WAIT_FOR_MESSAGE: begin
           	double_sop_error   =  1'b0;          	
@@ -72,6 +90,7 @@ always_comb begin
               	missing_sop_error   =  1'b0;      	
 
 			end else begin
+				// got invalid inputs (valid not raised) - reset all outputs as 0
 	            enforced_msg.valid  =  1'b0;
 	            enforced_msg.sop    =  1'b0;
 	            enforced_msg.eop    =  1'b0;
@@ -83,7 +102,7 @@ always_comb begin
 		end
 
 		RECIEVE_MASSAGE: begin
-          	missing_sop_error   =  1'b0;
+          	missing_sop_error   =  1'b0; // 
 			if (untrusted_msg.valid & ~untrusted_msg.sop) begin
 				// valid protocol - finished recieving the message 
 	            enforced_msg.valid  =  untrusted_msg.valid;
@@ -93,6 +112,7 @@ always_comb begin
               	double_sop_error   =  1'b0;
 
 			end else begin
+	            // got invalid inputs (valid not raised) - reset all outputs as 0
 	            enforced_msg.valid  =  1'b0;
 	            enforced_msg.sop    =  1'b0;
 	            enforced_msg.eop    =  1'b0;
@@ -105,9 +125,10 @@ always_comb begin
 	endcase
 
 end
-  
-assign enforced_msg.empty = enforced_msg.eop ? untrusted_msg.empty : 0;
-assign enforced_msg.data = enforced_msg.valid ? untrusted_msg.data : 0;
-assign enforced_msg.ready =  untrusted_msg.ready;
+
+
+assign enforced_msg.empty = enforced_msg.eop   ? untrusted_msg.empty : 0; // empty irrelevant without eop
+assign enforced_msg.data  = enforced_msg.valid ? untrusted_msg.data  : 0; // send data only when it's valid
+assign enforced_msg.ready =  untrusted_msg.ready; // signal from the protected module, don't need any change
 
 endmodule
